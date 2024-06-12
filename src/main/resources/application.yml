@@ -1,0 +1,27 @@
+server:
+  port: 8081
+  servlet:
+    contextPath: /
+springfox:
+  documentation:
+    open-api:
+      v3:
+        path: /api-docs
+#client id and client secret to be provided from STEP platform (API KEY=> clientId:clientSecret) 
+
+apix:
+  grantType: client_credentials
+  scope: EVENT_PUBLISHER_ALL
+  clientId:
+  clientSecret:
+  server: https://eu2-stagingref.api.vodafone.com
+  path: /OAuth2ClientCredentialsGrant/v1/token
+  urlPathIntrospect: /OAuth2TokenIntrospection/v1/introspect
+  revoke:
+    token:
+      milliseconds: 1800000
+publisher:
+  path: /eventPublisher/v1/publish
+ 
+  
+  

@@ -1,0 +1,897 @@
+openapi: 3.0.3
+info:
+  title: 'V2X Publisher API Client'
+  description: V2X Publisher API Client
+  termsOfService: http://swagger.io/terms/
+  contact:
+    email: xxx@vodafone.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+ 
+externalDocs:
+  description: Vodafone Confluence documentation
+  url: https://confluence.tools.aws.vodafone.com/pages/viewpage.action?spaceKey=SSTFEP&title=STEP+-+Safer+Transport+for+Europe+Platform+Home
+
+servers:
+  - url: '{protocol}://{hostserver}.{environment}:{port}/{version}'
+    variables:
+      protocol:
+        enum:
+          - http
+          - https
+        default: https
+      hostserver:
+        enum:
+          - 'localhost'
+          - 'servername'
+        default: 'localhost'
+      environment:
+        enum:
+          - dev         # Development server
+          - pre         # Staging server
+          - pro         # Production server
+        default: pro
+      port:
+        enum:
+          - '443'
+          - '8443'
+          - '9443'
+        default: '443'
+      version:
+        enum:
+          - 'v1'
+          - 'v2'
+        default: 'v1'
+
+tags:
+  - name: V2X
+    description: Related with (ETSI) message publishing
+
+paths:
+  /v2x/publish:
+    get:
+      tags:
+        - V2X
+      summary: "Service for generating DENM and IVIM (ETSI) messages "
+      description: "Receives and publishes a message back into the Event stream"
+      operationId: publishV2x
+      responses:
+        200:
+          $ref: '#/components/responses/SuccessRequest'
+        400:
+          $ref: '#/components/responses/BadRequest'
+security:
+  - bearerAuth: [ ]
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    SimpleResponse:
+      description: A simples response structure
+      content:
+        application/json:
+          schema:
+            type: string
+    BadRequest:
+      description: The received message was not in a correct format
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    #      headers:
+    #        Content-Security-Policy:
+    #          $ref: '#/components/headers/CSP'
+    SuccessRequest:
+      description: The received message was in a correct format and successfully processed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Response'
+    SpatemResponse:
+      description: Spatem message generated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BaseMessage'      
+  #      headers:
+  #        Content-Security-Policy:
+  #          $ref: '#/components/headers/CSP'
+  #
+  #  headers:
+  #    CSP:
+  #      description: Content Security Policy header
+  #      schema:
+  #        default: default-src 'none';
+  #        type: string
+
+  schemas:
+    Testing:
+      type: object
+      properties:
+        field1:
+          type: string
+        field2:
+          type: string
+        field3:
+          type: string
+    BaseMessage:
+      type: object
+      required:
+        - publisher
+        - service
+        - metadata
+      properties:
+        publisher:
+          type: "string"
+          example: "nokia"
+          pattern: ^(?!\s*$).+
+        service:
+          $ref: "#/components/schemas/ServiceType"
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+        uuid:
+          $ref: "#/components/schemas/uuid"
+        topic:
+          type: "string"
+
+      discriminator:
+        propertyName: service
+        mapping:
+          DENM: "#/components/schemas/MessageDenm"
+          IVIM: "#/components/schemas/MessageIvim"
+
+    Content:
+      type: object
+      properties:
+        # Base64 encoded string
+        binary:
+          type: string
+          format: byte
+        hex:
+          # Hexadecimal string
+          type: string
+          format: hexadecimal
+    ContentDenm:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/Content"
+      properties:
+        object:
+          $ref: "#/components/schemas/PayloadDenm"
+    ContentIvim:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/Content"
+      properties:
+        object:
+          $ref: "#/components/schemas/PayloadIvim"
+   
+    MessageDenm:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/BaseMessage"
+      properties:
+        content:
+          $ref: "#/components/schemas/ContentDenm"
+    MessageIvim:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/BaseMessage"
+      properties:
+        content:
+          $ref: "#/components/schemas/ContentIvim"
+    PayloadDenm:
+      type: object
+      required:
+        - identifier
+        - sequence
+        - referencePosition
+        - heading
+        - speed
+        - distance
+        - trafficDirection
+        - validityDuration
+        - transmissionInterval
+        - cause
+        - time
+      properties:
+        identifier:
+          type: integer
+          example: 123456789
+        sequence:
+          type: integer
+          example: 123
+        stationType:
+          $ref: "#/components/schemas/StationType"
+        referencePosition:
+          $ref: "#/components/schemas/ReferencePosition"
+        #        heading:
+        #          type: integer
+        #          example: 10
+        #          minimum: 0
+        #          maximum: 360
+        #        speed:
+        #          type: integer
+        #          example: 10
+        #          minimum: 0
+        #          maximum: 16383
+        distance:
+          type: integer
+          example: 199
+        trafficDirection:
+          type: string
+          example: "sameDirection"
+          enum:
+            - "sameDirection"
+            - "oppositeDirection"
+            - "bothDirections"
+            - "valueNotUsed"
+        #          type: integer
+        #          example: 0
+        #          minimum: 0
+        #          maximum: 3
+        validityDuration:
+          type: integer
+          example: 40
+          minimum: 0
+          maximum: 86400
+        transmissionInterval:
+          type: integer
+          example: 500
+          minimum: 1
+          maximum: 10000
+        time:
+          $ref: "#/components/schemas/Time"
+        event:
+          $ref: "#/components/schemas/Event"
+    PayloadIvim:
+      type: object
+      required:
+        - identifier
+        - sequence
+        - referencePosition
+        - countryCode
+      properties:
+        identifier:
+          type: integer
+          example: 123456789
+        sequence:
+          type: integer
+          example: 123
+        referencePosition:
+          $ref: "#/components/schemas/ReferencePosition"
+        countryCode:
+          type: string 
+          pattern: '^[A-Z]{2}$'
+          minLength: 2
+          maxLength: 2
+          example: GB
+          # Probaby use an ENUM
+        geographicLocations:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeographicLocation"
+        iviLocations:
+          type: array
+          items:
+            $ref: "#/components/schemas/IviLocation"
+ 
+  
+    GeographicLocation:
+      type: object
+      required:
+        - id
+        - heading
+        - zones
+      properties:
+        id:
+          type: integer
+          example: 123456789
+        heading:
+          type: integer
+          example: 2345
+        line:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeltaPosition"
+    DeltaPosition:
+      type: object
+      required:
+        - deltaLatitude
+        - deltaLongitude
+      properties:
+        deltaLatitude:
+          type: integer
+          example: -340
+        deltaLongitude:
+          type: integer
+          example: 2345
+    IviLocation:
+      type: object
+      required:
+        - detectionZones
+        - relevanceZones
+        - applicableLanes
+        - roadSigns
+        - direction
+        - type
+      properties:
+        detectionZones:
+          type: array
+          items:
+            type: integer
+        relevanceZones:
+          type: array
+          items:
+            type: integer
+        applicableLanes:
+          type: array
+          items:
+            type: integer
+        roadSigns:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoadSign"
+        direction:
+          type: integer
+          example: 1
+        type:
+          type: integer
+          example: 0
+          # 0 = imediateDangerWarningMessage
+          # 1, 2, 3, 4
+    RoadSign:
+      type: object
+      required:
+        - countryCode
+        - serviceCategoryCode
+        - pictogramCategoryCode
+      properties:
+        countryCode:
+          type: string
+          pattern: '^[A-Z]{2}$'
+          minLength: 2
+          maxLength: 2
+          example: GB
+          # Probaby use an ENUM
+        serviceCategory:
+          $ref: "#/components/schemas/"
+        pictogramCategory:
+          $ref: "#/components/schemas/PictogramCategory"
+    ServiceCategory:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - "TrafficSign"
+            - "PublicFacilities"
+            - "AmbientOrRoadCondition"
+          example: "TrafficSign"
+        traffic:
+          type: string
+          enum:
+            - "dangerWarning"
+            - "regulatory"
+            - "informative"
+          example: "dangerWarning"
+          default: "dangerWarning"
+        publicFacilities:
+          type: string
+          enum:
+            - "publicFacilities"
+          example: "publicFacilities"
+          default: "publicFacilities"
+        ambienteOrRoadConditions:
+          type: string
+          enum:
+            - "ambientCondition"
+            - "roadCondition"
+          example: "ambientCondition"
+          default: "ambientCondition"
+    Event:
+      type: object
+      required:
+        - heading
+        - speed
+        - eventCause
+      properties:
+        heading:
+          type: integer
+          example: 10
+          minimum: 0
+          maximum: 3600
+        speed:
+          type: integer
+          example: 10
+          minimum: 0
+          maximum: 16383
+        roadType:
+          $ref: "#/components/schemas/RoadType"
+        eventCause:
+          $ref: "#/components/schemas/Cause"
+        linkedEventCause:
+          $ref: "#/components/schemas/Cause"
+        eventHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventPoint"
+        traces:
+          type: array
+          items:
+            $ref: "#/components/schemas/PathHistory"
+        informationQuality:
+          $ref: "#/components/schemas/InformationQuality"
+    EventPoint:
+      type: object
+      required:
+        - deltaPosition
+        - informationQuality
+      properties:
+        deltaPosition:
+          $ref: "#/components/schemas/DeltaReferencePosition"
+        deltaTime:
+          type: number
+          example: 1606733817
+        informationQuality:
+          $ref: "#/components/schemas/InformationQuality"
+    PathHistory:
+      type: array
+      items:
+        $ref: "#/components/schemas/PathPoint"
+    PathPoint:
+      type: object
+      required:
+        - pathPosition
+      properties:
+        pathPosition:
+          $ref: "#/components/schemas/DeltaReferencePosition"
+        pathDeltaTime:
+          type: number
+          example: 1606733817
+    PictogramCategory:
+      type: object
+      required:
+        - nature
+        - serialNumber
+      properties:
+        nature:
+          type: integer
+          example: 9
+        serialNumber:
+          type: integer
+          example: 53
+    DeltaReferencePosition:
+      type: object
+      required:
+        - deltaAltitude
+        - deltaLatitude
+        - deltaLongitude
+      properties:
+        deltaLatitude:
+          type: integer
+          format: int64
+          example: 131072
+          minimum: -131071
+          maximum: 131072
+          description: in microdegrees. 131072 for unavailable
+        deltaLongitude:
+          type: integer
+          format: int64
+          example: 131072
+          minimum: -131071
+          maximum: 131072
+          description: in microdegrees. 131072 for unavailable
+        deltaAltitude:
+          type: integer
+          format: int64
+          example: 12800
+          minimum: -12700
+          maximum: 12800
+          description: in centimeters
+    ReferencePosition:
+      type: object
+      required:
+        - altitude
+        - latitude
+        - longitude
+      properties:
+        heading:
+          type: integer
+          example: 10
+          minimum: 0
+          maximum: 3600
+        speed:
+          type: integer
+          example: 10
+          minimum: 0
+          maximum: 16383
+        latitude:
+          type: number
+          format: double
+          example: 43.6640935
+          minimum: -90.000000
+          maximum: 90.000000
+        longitude:
+          type: number
+          format: double
+          example: 6.9321627
+          minimum: -180.000000
+          maximum: 180.000000
+        altitude:
+          type: number
+          format: float
+          example: 30.205
+          minimum: -100000
+          maximum: 800001
+    StationType:
+      type: string
+      example: "passengerCar"
+      enum:
+        - "unknown"
+        - "pedestrian"
+        - "cyclist"
+        - "moped"
+        - "motorcycle"
+        - "passengerCar"
+        - "bus"
+        - "lightTruck"
+        - "heavyTruck"
+        - "trailer"
+        - "specialVehicles"
+        - "tram"
+        - "roadSideUnit"
+    RoadType:
+      type: string
+      example: "urban-NoStructuralSeparationToOppositeLanes"
+      enum:
+        - "urban-NoStructuralSeparationToOppositeLanes"
+        - "urban-WithStructuralSeparationToOppositeLanes"
+        - "nonUrban-NoStructuralSeparationToOppositeLanes"
+        - "nonUrban-WithStructuralSeparationToOppositeLanes"
+    InformationQuality:
+      type: integer
+      example: 5
+      minimum: 0
+      maximum: 7
+    Cause:
+      type: string
+      example: "wrongWayDriving"
+      enum:
+        - "reserved"
+        - "trafficCondition"
+        - "accident"
+        - "roadworks"
+        - "impassability"
+        - "adverseWeatherCondition-Adhesion"
+        - "aquaplannning"
+        - "hazardousLocation-SurfaceCondition"
+        - "hazardousLocation-ObstacleOnTheRoad"
+        - "hazardousLocation-AnimalOnTheRoad"
+        - "humanPresenceOnTheRoad"
+        - "wrongWayDriving"
+        - "rescueAndRecoveryWorkInProgress"
+        - "adverseWeatherCondition-ExtremeWeatherCondition"
+        - "adverseWeatherCondition-Visibility"
+        - "adverseWeatherCondition-Precipitation"
+        - "slowVehicle"
+        - "dangerousEndOfQueue"
+        - "vehicleBreakdown"
+        - "postCrash"
+        - "humanProblem"
+        - "stationaryVehicle"
+        - "emergencyVehicleApproaching"
+        - "hazardousLocation-DangerousCurve"
+        - "collisionRisk"
+        - "signalViolation"
+        - "dangerousSituation"
+    Time:
+      type: object
+      required:
+        - detectionTime
+        - referenceTime
+      properties:
+        detectionTime:
+          type: number
+          example: 1606733817
+        referenceTime:
+          type: number
+          example: 1635587817
+    Metadata:
+      type: object
+      required:
+        - "geoaddress"
+      properties:
+        restricted:
+          type: "boolean"
+          default: false
+        project:
+          type: "string"
+          default: ""
+          maxLength: 255
+        timestamp:
+          type: string
+          example: "1632838789"
+          maxLength: 10
+        geoaddress:
+          $ref: "#/components/schemas/GeoAddress"
+    GeoAddress:
+      type: object
+      required:
+        - "lat"
+        - "lon"
+      properties:
+        lat:
+          type: number
+          format: double
+          example: 43.6640935
+          minimum: -90.000000
+          maximum: 90.000000
+        lon:
+          type: number
+          format: double
+          example: 6.9321627
+          minimum: -180.000000
+          maximum: 180.000000
+    uuid:
+      type: string
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      # the regex above limits the length;
+      # however, some tools might require explicit settings:
+      minLength: 36
+      maxLength: 36
+      example: "Gcc55edda-8acd-5128-977d-12b94430896a"
+    ServiceType:
+      type: string
+      enum:
+       
+        - DENM
+        - IVIM
+        - UNKNOWN
+      default: UNKNOWN
+
+    LaneDirection:
+      type: string
+      enum:
+        - ingressPath
+        - egressPath
+    LaneTypeAttributes:
+      type: object
+      required:
+        - typeName
+      properties:
+        typeName:
+          $ref: "#/components/schemas/LaneType"
+
+      discriminator:
+        propertyName: typeName
+        mapping:
+          vehicle: "#/components/schemas/LaneAttributes-Vehicle"
+          crosswalk: "#/components/schemas/LaneAttributes-Crosswalk"
+          bike: "#/components/schemas/LaneAttributes-Bike"
+          sidewalk: "#/components/schemas/LaneAttributes-Sidewalk"
+          barrier: "#/components/schemas/LaneAttributes-Barrier"
+          striping: "#/components/schemas/LaneAttributes-Striping"
+          trackedVehicle: "#/components/schemas/LaneAttributes-TrackedVehicle"
+          parking: "#/components/schemas/LaneAttributes-Parking"
+    LaneType:
+      type: string
+      enum:
+        - vehicle
+        - crosswalk
+        - bike
+        - sidewalk
+        - barrier
+        - striping
+        - trackedVehicle
+        - parking
+      default: vehicle
+    Vehicle:
+      type: string
+      enum:
+        - isVehicleRevocableLane
+        - isVehicleFlyOverLane
+        - hovLaneUseOnly
+        - restrictedToBusUse
+        - restrictedToTaxiUse
+        - restrictedFromPublicUse
+        - hasIRbeaconCoverage
+        - permissionOnRequest
+    Crosswalk:
+      type: string
+      enum:
+        - crosswalkRevocableLane
+        - bicyleUseAllowed
+        - isXwalkFlyOverLane
+        - fixedCycleTime
+        - biDirectionalCycleTimes
+        - hasPushToWalkButton
+        - audioSupport
+        - rfSignalRequestPresent
+        - unsignalizedSegmentsPresent
+    Bike:
+      type: string
+      enum:
+        - bikeRevocableLane
+        - pedestrianUseAllowed
+        - isBikeFlyOverLane
+        - fixedCycleTime
+        - biDirectionalCycleTimes
+        - isolatedByBarrier
+        - unsignalizedSegmentsPresent
+    Sidewalk:
+      type: string
+      enum:
+        - sidewalk-RevocableLane
+        - bicyleUseAllowed
+        - isSidewalkFlyOverLane
+        - walkBikes
+    Barrier:
+      type: string
+      enum:
+        - median-RevocableLane
+        - median
+        - whiteLineHashing
+        - stripedLines
+        - doubleStripedLines
+        - trafficCones
+        - constructionBarrier
+        - trafficChannels
+        - lowCurbs
+        - highCurbs
+    Striping:
+      type: string
+      enum:
+        - stripeToConnectingLanesRevocableLane
+        - stripeDrawOnLeft
+        - stripeDrawOnRight
+        - stripeToConnectingLanesLeft
+        - stripeToConnectingLanesRight
+        - stripeToConnectingLanesAhead
+    TrackedVehicle:
+      type: string
+      enum:
+        - spec-RevocableLane
+        - spec-commuterRailRoadTrack
+        - spec-lightRailRoadTrack
+        - spec-heavyRailRoadTrack
+        - spec-otherRailType
+    Parking:
+      type: string
+      enum:
+        - parkingRevocableLane
+        - parallelParkingInUse
+        - headInParkingInUse
+        - doNotParkZone
+        - parkingForBusUse
+        - parkingForTaxiUse
+        - noPublicParkingUse
+    LaneAttributes-Vehicle:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/LaneTypeAttributes"
+      properties:
+        content:
+          $ref: "#/components/schemas/Vehicle"
+    LaneAttributes-Crosswalk:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/LaneTypeAttributes"
+      properties:
+        content:
+          $ref: "#/components/schemas/Crosswalk"
+    LaneAttributes-Bike:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/LaneTypeAttributes"
+      properties:
+        content:
+          $ref: "#/components/schemas/Bike"
+    LaneAttributes-Sidewalk:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/LaneTypeAttributes"
+      properties:
+        content:
+          $ref: "#/components/schemas/Sidewalk"
+    LaneAttributes-Barrier:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/LaneTypeAttributes"
+      properties:
+        content:
+          $ref: "#/components/schemas/Barrier"
+    LaneAttributes-Striping:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/LaneTypeAttributes"
+      properties:
+        content:
+          $ref: "#/components/schemas/Striping"
+    LaneAttributes-TrackedVehicle:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/LaneTypeAttributes"
+      properties:
+        content:
+          $ref: "#/components/schemas/TrackedVehicle"
+    LaneAttributes-Parking:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/LaneTypeAttributes"
+      properties:
+        content:
+          $ref: "#/components/schemas/Parking"
+    Position3D:
+      type: object
+      required:
+        - lat
+        - long
+      properties:
+        latitude:
+          type: number
+          format: double
+          example: 43.6640935
+          minimum: -90.000000
+          maximum: 90.000000
+        longitude:
+          type: number
+          format: double
+          example: 6.9321627
+          minimum: -180.000000
+          maximum: 180.000000
+   
+   
+   
+   
+   
+
+
+    # Schema for success response body
+    Response:
+      type: object
+      properties:
+        service:
+          $ref: "#/components/schemas/ServiceType"
+        success:
+          type: boolean
+          example: true
+        key:
+          type: string
+          maxLength: 255
+        offset:
+          type: string
+          maxLength: 255
+        partition:
+          type: string
+          maxLength: 255
+        uuid:
+          type: string
+          maxLength: 255
+
+    # Schema for error response body
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: 987
+          maxLength: 50
+        message:
+          type: string
+          example: custom error message
+          maxLength: 255
+      required:
+        - code
+        - message
+
+    
